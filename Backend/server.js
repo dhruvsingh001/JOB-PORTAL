@@ -6,6 +6,7 @@ import "dotenv/config"
 import connectDB from "./config/db.js"
 
 import * as Sentry from "@sentry/node"
+import { clerkWebhooks } from "./controllers/webhooks.js"
 
 //initialize express
 const app=express()
@@ -32,3 +33,5 @@ Sentry.setupExpressErrorHandler(app);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 })
+
+app.post('/webhooks', clerkWebhooks)
