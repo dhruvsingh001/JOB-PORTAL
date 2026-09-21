@@ -24,8 +24,11 @@ app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");
 });
 
+// Port
+const PORT = process.env.PORT || 5000
+
 Sentry.setupExpressErrorHandler(app);
 
-app.listen(3000,()=>{
-    console.log("server is running on port 3000")
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 })
