@@ -12,7 +12,7 @@ const Jobcard = ({job}) => {
   <div className='mb-3'>
     <div className='w-10 h-10 flex items-center justify-center'>
       <img
-        src={assets.company_icon}
+        src={job.companyId.image}
         alt='Slack'
         className='w-9 h-9 object-contain'
       />

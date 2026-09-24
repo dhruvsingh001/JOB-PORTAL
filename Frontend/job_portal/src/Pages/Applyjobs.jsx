@@ -1,33 +1,57 @@
 import React, { useContext, useEffect, useState } from 'react'
 import Navbar from '../Components/Navbar'
-import { data, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { AppContext } from '../Context/AppContext'
 import Loading from '../Components/Loading'
-import { assets } from '../assets/assets'
 import moment from 'moment'
 import Jobcard from '../Components/Jobcard'
 import Footer from '../Components/Footer'
+import axios from 'axios'
+import { toast } from 'react-toastify'
 
 const Applyjobs = () => {
     const { id } = useParams()
 
     const [jobdata, setjobdata] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [errorMessage, setErrorMessage] = useState('')
 
-    const { jobs } = useContext(AppContext)
+    const { jobs, backendUrl } = useContext(AppContext)
 
     const fetchjobs = async () => {
-        const data = jobs.filter(job => job._id === id)
 
-        if (data.length !== 0) {
-            setjobdata(data[0])
-            console.log(data[0])
-        }
+    try {
+
+      const { data } = await axios.get(backendUrl + `/api/jobs/${id}`)
+
+      if (data.success) {
+        setjobdata(data.job)
+      } else {
+        setErrorMessage(data.message || 'Could not load this job.')
+        toast.error(data.message)
+      }
+
+    } catch (error) {
+      setErrorMessage(error.message || 'Could not load this job.')
+      toast.error(error.message)
+    } finally {
+      setIsLoading(false)
     }
 
+  }
     useEffect(() => {
         fetchjobs()
-    }, [id, jobs])
-    return jobdata ? (
+    }, [id])
+    if (isLoading) return <Loading />
+
+    if (errorMessage || !jobdata) {
+        return <div className='min-h-screen flex flex-col items-center justify-center gap-4 text-gray-600'>
+            <p>{errorMessage || 'Job not found.'}</p>
+            <button onClick={() => window.location.reload()} className='text-blue-600 underline'>Try again</button>
+        </div>
+    }
+
+    return (
         <div>
             <Navbar />
             <div className="w-4/5 mx-auto my-10 px-11 py-14 bg-blue-50 border border-blue-500 rounded-lg flex items-center gap-6">
@@ -35,7 +59,7 @@ const Applyjobs = () => {
                 {/* Company Logo */}
                 <div className="w-32 h-32 bg-white border border-gray-200 rounded-lg flex items-center justify-center shrink-0">
                     <img
-                        src={assets.company_icon}
+                        src={jobdata.companyId.image}
                         alt="Company Logo"
                         className="w-20 h-20 object-contain"
                     />
@@ -78,7 +102,8 @@ const Applyjobs = () => {
                     Apply now
                 </button>
             </div>
-            <div className='flex flex-col gap-3 justify-end w-1/3 mx-10 px-8 mb-10 items-end'>
+            <div className='flex flex-col gap-3 justify-start w-1/3 mx-10 px-8 mb-10 items-end'>
+            <h1 className='text-lg flex justify-center items-center w-1/2 bg-blue-100 py-1 rounded-2xl'>More jobs</h1>
                 {jobs.filter((job)=>job._id!==jobdata._id && job.companyId._id===jobdata.companyId._id).filter
                 (job=>true).slice(0,4).map((job,index)=>{
                     return <Jobcard key={index} job={job}/>
@@ -87,8 +112,6 @@ const Applyjobs = () => {
             </div>
             <Footer/>
         </div>
-    ) : (
-        <Loading />
     )
 }
 

@@ -1,5 +1,5 @@
 import express from "express"
-import { fun, loginCompany, postJob, registerCompany } from "../controllers/companyController.js"
+import { changeVisiblity, fun, getCompanyData, getCompanyPostedJobs, loginCompany, postJob, registerCompany } from "../controllers/companyController.js"
 import upload from "../config/multer.js"
 import { protectCompany } from "../middleware/authMIddleware.js"
 
@@ -13,7 +13,7 @@ router.post('/register',upload.single('image'), registerCompany)
 router.post('/login',loginCompany)
 
 // Get company data
-router.get('/company',fun)
+router.get('/company',protectCompany,getCompanyData)
 
 // Post a job
 router.post('/post-job',protectCompany,postJob)
@@ -22,12 +22,12 @@ router.post('/post-job',protectCompany,postJob)
 router.get('/applicants',fun)
 
 // Get  Company Job List
-router.get('/list-jobs',fun)
+router.get('/list-jobs',protectCompany, getCompanyPostedJobs)
 
 // Change Applcations Status 
 router.post('/change-status',fun)
 
 // Change Applcations Visiblity 
-router.post('/change-visiblity',fun)
+router.post('/change-visiblity',protectCompany,changeVisiblity)
 
 export default router

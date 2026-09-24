@@ -1,11 +1,17 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useContext } from 'react'
 import { useState } from 'react'
 import { AppContext } from '../Context/AppContext'
 import { assets } from '../assets/assets'
+import {useNavigate} from 'react-router-dom'
+import axios from "axios"
+import { toast } from 'react-toastify'
+
 
 const Recruiterloginbox = () => {
 
+
+  const navigate =useNavigate()
   const [state, setState] = useState('Login')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
@@ -13,15 +19,68 @@ const Recruiterloginbox = () => {
 
   const [image, setImage] = useState(false)
   const [isTextDataSubmited, setIsTextDataSubmited] = useState(false)
-  const {setRecruiterLogin}=useContext(AppContext)
+  const {setRecruiterLogin,backendUrl,setcompanyData,setcompanytoken}=useContext(AppContext)
 
   const onSubmitHandler = async (e) => {
         e.preventDefault()
 
         if (state == "Sign Up" && !isTextDataSubmited) {
             return setIsTextDataSubmited(true)
-        }}
+        }
 
+         try {
+
+            if (state === "Login") {
+
+                const { data } = await axios.post(backendUrl + '/api/company/login', { email, password })
+
+                if (data.success) {
+                    setcompanyData(data.company)
+                    setcompanytoken(data.token)
+                    localStorage.setItem('companyToken', data.token)
+                    setRecruiterLogin(false)
+                    navigate('/dashboard')
+                } else {
+                    toast.error(data.message)
+                }}
+                 else {
+
+                const formData = new FormData()
+                formData.append('name', name)
+                formData.append('password', password)
+                formData.append('email', email)
+                formData.append('image', image)
+
+                const { data } = await axios.post(backendUrl + '/api/company/register', formData)
+                if (data.success) {
+                    setcompanyData(data.company)
+                    setcompanytoken(data.token)
+                    localStorage.setItem('companyToken', data.token)
+                    setRecruiterLogin(false)
+                    navigate('/dashboard')
+                } else {
+                    toast.error(data.message)
+                }
+
+            }
+
+            
+        } catch (error) {
+            toast.error(error.message)
+        }
+
+      
+      
+      }
+
+
+        useEffect(() => {
+        document.body.style.overflow = 'hidden'
+
+        return () => {
+            document.body.style.overflow = 'unset'
+        }
+    }, [])
   return (<div className='absolute top-0 left-0 right-0 bottom-0 z-10 backdrop-blur-sm bg-black/30 flex justify-center items-center'>
     <form onSubmit={onSubmitHandler} className='relative bg-white p-10 rounded-xl text-slate-500'>
       <h1 className='text-center text-2xl text-neutral-700 font-medium'>Recruiter {state}</h1>
