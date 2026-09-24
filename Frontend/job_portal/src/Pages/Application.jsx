@@ -1,25 +1,83 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import Navbar from '../Components/Navbar'
 import { assets, jobsApplied } from '../assets/assets'
 import moment from 'moment'
 import Footer from '../Components/Footer'
+import axios from 'axios'
+import { toast } from 'react-toastify'
+import { useAuth, useUser } from '@clerk/react'
+import { AppContext } from '../Context/AppContext'
 
 const Application = () => {
+
+    const { user } = useUser()
+
+    const { getToken } = useAuth()
+
+    const { backendUrl, userData, userApplications, fetchUserData, fetchUserApplications } = useContext(AppContext)
 
     const [edit, setedit] = useState(false)
     const [Resume, setResume] = useState(null)
 
-    const viewResume = () => {
-        if (Resume) {
-            const url = URL.createObjectURL(Resume)
-            window.open(url, '_blank')
+    const viewResume = async () => {
+        const previewWindow = window.open('', '_blank')
+        if (!previewWindow) {
+            toast.error('Allow pop-ups to view your resume.')
+            return
+        }
+
+        try {
+            const token = await getToken()
+            if (!token) throw new Error('Please sign in again to view your resume.')
+
+            const { data } = await axios.get(backendUrl + '/api/user/resume', {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'blob'
+            })
+            const pdfUrl = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+            previewWindow.location.href = pdfUrl
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000)
+        } catch (error) {
+            previewWindow.close()
+            toast.error(error.response?.data?.message || error.message)
         }
     }
 
-    function btn() {
-        setedit(Prev => !Prev)
+    const updateResume = async () => {
+
+        try {
+
+            const formData = new FormData()
+            formData.append('resume', Resume)
+
+            const token = await getToken()
+
+            const { data } = await axios.post(backendUrl + '/api/user/update-resume',
+                formData,
+                { headers: { Authorization: `Bearer ${token}` } }
+            )
+
+            if (data.success) {
+                toast.success(data.message)
+                await fetchUserData()
+                setedit(false)
+                setResume(null)
+            } else {
+                toast.error(data.message)
+            }
+
+        } catch (error) {
+            toast.error(error.response?.data?.message || error.message)
+        }
     }
 
+
+    console.log(userApplications)
+    useEffect(() => {
+        if (user) {
+            fetchUserApplications()
+        }
+    }, [user])
     return (
         <div>
             <Navbar />
@@ -35,56 +93,7 @@ const Application = () => {
 
                 <div className='bg-white border border-gray-200 rounded-xl shadow-sm p-8'>
 
-                    {edit ? (
-
-                        /* Resume is already selected */
-                        <div className='flex items-center justify-between'>
-
-                            <div className='flex items-center gap-4'>
-
-                                <div className='w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center'>
-                                    <img
-                                        src={assets.profile_upload_icon}
-                                        alt=''
-                                        className='w-6 h-6'
-                                    />
-                                </div>
-
-                                <div>
-                                    <p className='text-sm text-gray-500'>
-                                        Current Resume
-                                    </p>
-
-                                    <p className='font-medium text-gray-800'>
-                                        {Resume ? Resume.name : 'Resume'}
-                                    </p>
-                                </div>
-
-                            </div>
-
-                            <div className='flex gap-3'>
-
-                                <button
-                                    onClick={viewResume}
-                                    className='px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition'
-                                >
-                                    View Resume
-                                </button>
-
-                                <button
-                                    onClick={btn}
-                                    className='px-5 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition'
-                                >
-                                    Edit
-                                </button>
-
-                            </div>
-
-                        </div>
-
-                    ) : (
-
-                        /* Upload Resume */
+                    {edit || !userData?.resume ? (
                         <div>
 
                             <div className='flex items-center gap-4 mb-6'>
@@ -137,7 +146,7 @@ const Application = () => {
                             </div>
 
                             <button
-                                onClick={btn}
+                                onClick={updateResume}
                                 disabled={!Resume}
                                 className='mt-6 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed'
                             >
@@ -145,7 +154,32 @@ const Application = () => {
                             </button>
 
                         </div>
-
+                    ) : (
+                        <div className='flex items-center justify-between gap-4'>
+                            <div className='flex items-center gap-4'>
+                                <div className='w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center'>
+                                    <img src={assets.profile_upload_icon} alt='' className='w-6 h-6' />
+                                </div>
+                                <div>
+                                    <p className='text-sm text-gray-500'>Current Resume</p>
+                                    <p className='font-medium text-gray-800'>Resume uploaded</p>
+                                </div>
+                            </div>
+                            <div className='flex gap-3'>
+                                <button
+                                    onClick={viewResume}
+                                    className='px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition'
+                                >
+                                    View Resume
+                                </button>
+                                <button
+                                    onClick={() => setedit(true)}
+                                    className='px-5 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition'
+                                >
+                                    Replace
+                                </button>
+                            </div>
+                        </div>
                     )}
 
                 </div>
@@ -182,7 +216,7 @@ const Application = () => {
                         </thead>
 
                         <tbody>
-                            {jobsApplied.map((job, index) => !job.jobid ? (
+                            {userApplications.map((job, index) => (
                                 <tr
                                     key={index}
                                     className='border-b border-gray-300 last:border-b-0'
@@ -191,23 +225,23 @@ const Application = () => {
                                     <td className='px-6 py-4'>
                                         <div className='flex items-center gap-3'>
                                             <img
-                                                src={job.logo}
-                                                alt={job.company}
+                                                src={job.companyId.image}
+                                                alt={job.companyId.name}
                                                 className='w-9 h-9 object-contain'
                                             />
 
                                             <span className='text-sm text-gray-700'>
-                                                {job.company}
+                                                {job.companyId.name}
                                             </span>
                                         </div>
                                     </td>
 
                                     <td className='px-6 py-4 text-sm text-gray-600'>
-                                        {job.title}
+                                        {job.jobId.title}
                                     </td>
 
                                     <td className='px-6 py-4 text-sm text-gray-600'>
-                                        {job.location}
+                                        {job.jobId.location}
                                     </td>
 
                                     <td className='px-6 py-4 text-sm text-gray-600'>
@@ -217,7 +251,7 @@ const Application = () => {
                                     <td className='px-6 py-4'>
                                         <span
                                             className={`inline-block min-w-28 text-center px-4 py-2 rounded-md text-sm font-medium
-                            ${job.status === 'Accepted'
+                    ${job.status === 'Accepted'
                                                     ? 'bg-green-100 text-green-600'
                                                     : job.status === 'Rejected'
                                                         ? 'bg-red-100 text-red-500'
@@ -229,14 +263,14 @@ const Application = () => {
                                     </td>
 
                                 </tr>
-                            ) : null)}
+                            ))}
                         </tbody>
 
                     </table>
 
                 </div>
             </div>
-            <Footer/>
+            <Footer />
 
         </div>
     )

@@ -20,6 +20,7 @@ export const AppContextProvider = ({ children }) => {
     const { getToken } = useAuth()
 
 
+
     const [jobs, setjobs] = useState([])
     //usestate variable to manage the backend api and jwt token for recruiter login 
     const [companytoken, setcompanytoken] = useState(null)
@@ -69,15 +70,40 @@ export const AppContextProvider = ({ children }) => {
         try {
 
             const token = await getToken();
+            if (!token) {
+                toast.error('Could not get your Clerk session token. Please sign in again.')
+                return
+            }
 
-            const { data } = await axios.get(backendUrl + '/api/user/user',
-                { headers: { Authorization: `Bearer ${token}` } })
+            const { data } = await axios.get(backendUrl + '/api/user/user', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
 
             if (data.success) {
                 setUserData(data.user)
-            } else (
-                toast.error(data.message)
+            } else {
+                toast.error(data.message || 'Could not load your user data.')
+            }
+
+        } catch (error) {
+            toast.error(error.response?.data?.message || error.message)
+        }
+    }
+
+    // Function to Fetch User's Applied Applications
+    const fetchUserApplications = async () => {
+        try {
+
+            const token = await getToken()
+
+            const { data } = await axios.get(backendUrl + '/api/user/applications',
+                { headers: { Authorization: `Bearer ${token}` } }
             )
+            if (data.success) {
+                setUserApplications(data.applications)
+            } else {
+                toast.error(data.message)
+            }
 
         } catch (error) {
             toast.error(error.message)
@@ -112,6 +138,7 @@ export const AppContextProvider = ({ children }) => {
     useEffect(() => {
         if (user) {
             fetchUserData()
+            fetchUserApplications()
             
         }
     }, [user])
@@ -124,7 +151,10 @@ export const AppContextProvider = ({ children }) => {
     RecruiterLogin,setRecruiterLogin,
     companyData,setcompanyData,
     companytoken,setcompanytoken,
-    backendUrl
+    userData,setUserData,
+    backendUrl, userData, setUserData,
+        userApplications, setUserApplications,
+        fetchUserData,fetchUserApplications
   }
 
   return (

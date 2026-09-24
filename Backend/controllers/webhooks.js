@@ -4,27 +4,19 @@ import User from "../models/User.js";
 // API Controller Function to Manage Clerk User with database
 export const clerkWebhooks = async (req, res) => {
 
-    console.log("🔥 WEBHOOK RECEIVED")
-     console.log(
-        "WEBHOOK SECRET EXISTS:",
-        !!process.env.CLERK_WEBHOOK_SECRET
-    )
-
     try {
 
-        const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
+         const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
 
-        whook.verify(req.body, {
+        await whook.verify(req.body, {
             "svix-id": req.headers["svix-id"],
             "svix-timestamp": req.headers["svix-timestamp"],
             "svix-signature": req.headers["svix-signature"]
         })
 
-        console.log("✅ WEBHOOK VERIFIED")
 
         const { data, type } = JSON.parse(req.body.toString('utf8'))
 
-        console.log("EVENT TYPE:", type)
 
         switch (type) {
 
@@ -34,25 +26,19 @@ export const clerkWebhooks = async (req, res) => {
 
                 const userData = {
                     _id: data.id,
-                    email: data.email_addresses[0].email_address,
+                    email: data.email_addresses?.[0]?.email_address || '',
                     name: data.first_name + " " + data.last_name,
                     image: data.image_url,
                     resume: ''
                 }
 
-                console.log("USER DATA:", userData)
-
                 await User.create(userData)
-
-                console.log("✅ USER SAVED TO MONGODB")
 
                 res.json({})
                 break
             }
 
             case 'user.updated': {
-
-                console.log("✏️ USER UPDATED EVENT")
 
                 const userData = {
                     email: data.email_addresses[0].email_address,
@@ -68,8 +54,6 @@ export const clerkWebhooks = async (req, res) => {
 
             case 'user.deleted': {
 
-                console.log("🗑️ USER DELETED EVENT")
-
                 await User.findByIdAndDelete(data.id)
 
                 res.json({})
@@ -78,14 +62,10 @@ export const clerkWebhooks = async (req, res) => {
 
             default:
 
-                console.log("⚠️ UNKNOWN EVENT:", type)
-
                 return res.sendStatus(200)
         }
 
     } catch (error) {
-
-        console.error("❌ CLERK WEBHOOK FAILED:", error)
 
         res.status(400).json({
             success: false,
