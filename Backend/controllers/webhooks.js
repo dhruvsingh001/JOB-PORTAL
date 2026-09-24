@@ -5,12 +5,16 @@ import User from "../models/User.js";
 export const clerkWebhooks = async (req, res) => {
 
     console.log("🔥 WEBHOOK RECEIVED")
+     console.log(
+        "WEBHOOK SECRET EXISTS:",
+        !!process.env.CLERK_WEBHOOK_SECRET
+    )
 
     try {
 
         const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
 
-        await whook.verify(JSON.stringify(req.body), {
+        whook.verify(req.body, {
             "svix-id": req.headers["svix-id"],
             "svix-timestamp": req.headers["svix-timestamp"],
             "svix-signature": req.headers["svix-signature"]
@@ -18,7 +22,7 @@ export const clerkWebhooks = async (req, res) => {
 
         console.log("✅ WEBHOOK VERIFIED")
 
-        const { data, type } = req.body
+        const { data, type } = JSON.parse(req.body.toString('utf8'))
 
         console.log("EVENT TYPE:", type)
 

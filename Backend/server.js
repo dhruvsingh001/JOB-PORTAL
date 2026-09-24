@@ -21,7 +21,8 @@ await connectCloudinary()
 
 //middleware
 app.use(cors())
-app.post('/webhooks', clerkWebhooks)
+// Svix verifies the exact bytes sent by Clerk, so this route must receive a raw body.
+app.post('/webhooks', express.raw({ type: 'application/json' }), clerkWebhooks)
 app.use(express.json())
 app.use(clerkMiddleware())
 
